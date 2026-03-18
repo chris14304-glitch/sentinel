@@ -75,15 +75,15 @@ const PATTERNS = {
     { name: "Facebook Pixel", regex: /(?:connect\.facebook\.net|fbq\s*\()/g, severity: SEVERITY.INFO, category: "Third-Party & Supply Chain" },
     { name: "Integrity Missing on External Script", regex: /<script[^>]*src\s*=\s*['"]https?:\/\/[^'"]+['"](?![^>]*integrity\s*=)[^>]*>/gi, severity: SEVERITY.MEDIUM, category: "Third-Party & Supply Chain" },
   ],
-  headers: [
-    { name: "Missing CSP Meta Tag", test: (c) => !/<meta[^>]*http-equiv\s*=\s*['"]Content-Security-Policy['"]/i.test(c), severity: SEVERITY.HIGH, category: "Security Headers", single: true },
-    { name: "Missing Referrer Policy", test: (c) => !/<meta[^>]*name\s*=\s*['"]referrer['"]/i.test(c) && !/Referrer-Policy/i.test(c), severity: SEVERITY.MEDIUM, category: "Security Headers", single: true },
-    { name: "Missing X-Frame-Options (Clickjacking)", test: (c) => !/<meta[^>]*http-equiv\s*=\s*['"]X-Frame-Options['"]/i.test(c), severity: SEVERITY.MEDIUM, category: "Security Headers", single: true },
-    { name: "Missing X-Content-Type-Options", test: (c) => !/<meta[^>]*http-equiv\s*=\s*['"]X-Content-Type-Options['"]/i.test(c), severity: SEVERITY.LOW, category: "Security Headers", single: true },
-    { name: "Weak CSP (unsafe-inline)", regex: /Content-Security-Policy[^'"]*unsafe-inline/gi, severity: SEVERITY.HIGH, category: "Security Headers" },
-    { name: "Weak CSP (unsafe-eval)", regex: /Content-Security-Policy[^'"]*unsafe-eval/gi, severity: SEVERITY.HIGH, category: "Security Headers" },
-    { name: "Weak CSP (wildcard)", regex: /Content-Security-Policy[^'"]*\s\*\s/gi, severity: SEVERITY.HIGH, category: "Security Headers" },
-  ],
+  // headers: [
+  //   { name: "Missing CSP Meta Tag", test: (c) => !/<meta[^>]*http-equiv\s*=\s*['"]Content-Security-Policy['"]/i.test(c), severity: SEVERITY.HIGH, category: "Security Headers", single: true },
+  //   { name: "Missing Referrer Policy", test: (c) => !/<meta[^>]*name\s*=\s*['"]referrer['"]/i.test(c) && !/Referrer-Policy/i.test(c), severity: SEVERITY.MEDIUM, category: "Security Headers", single: true },
+  //   { name: "Missing X-Frame-Options (Clickjacking)", test: (c) => !/<meta[^>]*http-equiv\s*=\s*['"]X-Frame-Options['"]/i.test(c), severity: SEVERITY.MEDIUM, category: "Security Headers", single: true },
+  //   { name: "Missing X-Content-Type-Options", test: (c) => !/<meta[^>]*http-equiv\s*=\s*['"]X-Content-Type-Options['"]/i.test(c), severity: SEVERITY.LOW, category: "Security Headers", single: true },
+  //   { name: "Weak CSP (unsafe-inline)", regex: /Content-Security-Policy[^'"]*unsafe-inline/gi, severity: SEVERITY.HIGH, category: "Security Headers" },
+  //   { name: "Weak CSP (unsafe-eval)", regex: /Content-Security-Policy[^'"]*unsafe-eval/gi, severity: SEVERITY.HIGH, category: "Security Headers" },
+  //   { name: "Weak CSP (wildcard)", regex: /Content-Security-Policy[^'"]*\s\*\s/gi, severity: SEVERITY.HIGH, category: "Security Headers" },
+  // ],
   debug: [
     { name: "Console.log Statement", regex: /console\.(?:log|debug|info|warn|error|trace|table|dir)\s*\(/g, severity: SEVERITY.LOW, category: "Debug & Dev Artifacts" },
     { name: "debugger Statement", regex: /\bdebugger\b/g, severity: SEVERITY.MEDIUM, category: "Debug & Dev Artifacts" },
@@ -104,6 +104,50 @@ const PATTERNS = {
     { name: "Angular.js (1.x - EOL)", regex: /angular[.-]1\.\d+/gi, severity: SEVERITY.HIGH, category: "Outdated Libraries" },
     { name: "Moment.js (Deprecated)", regex: /moment(?:\.min)?\.js/gi, severity: SEVERITY.LOW, category: "Outdated Libraries" },
   ],
+  cors: [
+    { name: "CORS Wildcard Origin (*)", regex: /(?:Access-Control-Allow-Origin|allowedOrigins?|cors\s*\(?\s*\{[^}]*origin)\s*[:=,]\s*['"`]\*['"`]/gi, severity: SEVERITY.CRITICAL, category: "CORS Misconfiguration" },
+    { name: "CORS Allow-Origin Header Set to *", regex: /setHeader\s*\(\s*['"]Access-Control-Allow-Origin['"]\s*,\s*['"]\*['"]\s*\)/g, severity: SEVERITY.CRITICAL, category: "CORS Misconfiguration" },
+    { name: "CORS Allow-All Methods", regex: /(?:Access-Control-Allow-Methods|allowedMethods)\s*[:=,]\s*['"][^'"]*(?:DELETE|PUT|PATCH)[^'"]*(?:DELETE|PUT|PATCH)[^'"]*['"]/gi, severity: SEVERITY.HIGH, category: "CORS Misconfiguration" },
+    { name: "CORS Allow-All Headers", regex: /(?:Access-Control-Allow-Headers|allowedHeaders)\s*[:=,]\s*['"]\*['"]/gi, severity: SEVERITY.HIGH, category: "CORS Misconfiguration" },
+    { name: "CORS Credentials with Wildcard", regex: /Access-Control-Allow-Credentials[^;]*true/gi, severity: SEVERITY.CRITICAL, category: "CORS Misconfiguration", contextCheck: (content, matchIndex) => {
+      const nearby = content.substring(Math.max(0, matchIndex - 500), matchIndex + 500);
+      return /Allow-Origin[^;]*\*/i.test(nearby);
+    }},
+    { name: "CORS Origin Reflected (Dynamic Wildcard)", regex: /(?:req\.headers?\.origin|request\.headers?\.origin|origin\s*=\s*req\.get\(['"]origin['"]\))/gi, severity: SEVERITY.HIGH, category: "CORS Misconfiguration" },
+    { name: "cors() Middleware Without Config", regex: /(?:app|router|server)\.use\s*\(\s*cors\s*\(\s*\)\s*\)/g, severity: SEVERITY.HIGH, category: "CORS Misconfiguration" },
+    { name: "CORS Preflight Allow-All", regex: /(?:OPTIONS|preflight)[^}]*(?:\*|Allow-Origin[^;]*\*)/gi, severity: SEVERITY.HIGH, category: "CORS Misconfiguration" },
+    { name: "Express CORS Wildcard Config", regex: /cors\s*\(\s*\{[^}]*origin\s*:\s*true/gi, severity: SEVERITY.HIGH, category: "CORS Misconfiguration" },
+    { name: "Django CORS Allow All", regex: /CORS_ALLOW_ALL_ORIGINS\s*=\s*True/g, severity: SEVERITY.CRITICAL, category: "CORS Misconfiguration" },
+    { name: "Flask CORS Wildcard", regex: /CORS\s*\(\s*app\s*(?:,\s*resources\s*=\s*\{?\s*['"]\/\*['"])?\s*\)/g, severity: SEVERITY.HIGH, category: "CORS Misconfiguration" },
+  ],
+  inputValidation: [
+    { name: "Presence-Only Check (No Type Validation)", regex: /if\s*\(\s*!(?:\w+\s*\|\|\s*)*!?\w+\s*\)\s*\{?\s*(?:return|throw|res\.status)/g, severity: SEVERITY.MEDIUM, category: "Input Validation" },
+    { name: "Missing Email Validation", regex: /(?:email|e_mail|emailAddress|userEmail)\s*(?:=\s*(?:req\.body|request\.body|body|fields|data|params|formData)\s*[\[.]|[,}\]])/gi, severity: SEVERITY.MEDIUM, category: "Input Validation" },
+    { name: "Direct Request Body Usage (No Sanitization)", regex: /(?:req\.body|request\.body|req\.query|req\.params)\s*\.\s*\w+\s*(?:;|\)|\]|,)/g, severity: SEVERITY.MEDIUM, category: "Input Validation" },
+    { name: "SQL String Concatenation (Injection Risk)", regex: /(?:query|execute|raw)\s*\(\s*['"`](?:SELECT|INSERT|UPDATE|DELETE|DROP)[^'"]*['"`]\s*\+\s*(?:req\.|request\.|params\.|body\.|query\.)/gi, severity: SEVERITY.CRITICAL, category: "Input Validation" },
+    { name: "SQL Template Literal (Injection Risk)", regex: /(?:query|execute|raw)\s*\(\s*`(?:SELECT|INSERT|UPDATE|DELETE|DROP)[^`]*\$\{(?:req\.|request\.|params\.|body\.|query\.)/gi, severity: SEVERITY.CRITICAL, category: "Input Validation" },
+    { name: "Missing Length/Size Validation", regex: /(?:name|title|description|comment|message|content|text|body|input|value)\s*=\s*(?:req\.body|request\.body|body|fields|data)\s*[\[.]\s*['"]?\w+['"]?\s*\]?\s*;/gi, severity: SEVERITY.LOW, category: "Input Validation" },
+    { name: "No parseInt/Number Validation on Numeric Input", regex: /(?:id|count|amount|price|quantity|limit|offset|page|size|age|year)\s*=\s*(?:req\.body|req\.query|req\.params|request\.body)\s*[\[.]/gi, severity: SEVERITY.MEDIUM, category: "Input Validation" },
+    { name: "JSON.parse Without Try-Catch", regex: /(?<!try\s*\{[^}]*)JSON\.parse\s*\(\s*(?:req\.|request\.|body|data|input|params)/gi, severity: SEVERITY.MEDIUM, category: "Input Validation" },
+    { name: "Regex Injection (User Input in RegExp)", regex: /new\s+RegExp\s*\(\s*(?:req\.|request\.|body\.|query\.|params\.|input|userInput|data)/gi, severity: SEVERITY.HIGH, category: "Input Validation" },
+    { name: "Path Traversal Risk (User Input in File Path)", regex: /(?:readFile|writeFile|readFileSync|writeFileSync|createReadStream|unlink|access|stat|open)\s*\(\s*(?:req\.|request\.|body\.|query\.|params\.|`[^`]*\$\{(?:req|request|body|query|params))/gi, severity: SEVERITY.CRITICAL, category: "Input Validation" },
+    { name: "Command Injection Risk", regex: /(?:exec|execSync|spawn|execFile|fork)\s*\(\s*(?:req\.|request\.|body\.|query\.|params\.|`[^`]*\$\{(?:req|request|body|query|params))/gi, severity: SEVERITY.CRITICAL, category: "Input Validation" },
+    { name: "Prototype Pollution Risk (Object.assign from user)", regex: /Object\.assign\s*\(\s*(?:\w+\s*,\s*)?(?:req\.body|request\.body|body|data|input)/gi, severity: SEVERITY.HIGH, category: "Input Validation" },
+    { name: "Spread Operator from User Input", regex: /\{\s*\.\.\.(?:req\.body|request\.body|body|data|input)\s*[,}]/gi, severity: SEVERITY.MEDIUM, category: "Input Validation" },
+  ],
+  fileUpload: [
+    { name: "File Upload Without Type Validation", regex: /(?:files?\.\w+|req\.files?|request\.files?|upload(?:ed)?File)\s*/gi, severity: SEVERITY.HIGH, category: "File Upload Security" },
+    { name: "readFileSync on Uploaded File (No Size Check)", regex: /readFileSync\s*\(\s*(?:file|uploaded|attachment|files?)\s*[\[.]?\s*(?:\w+\s*[\].]?\s*)?(?:filepath|path|tmp_path|tempFilePath)/gi, severity: SEVERITY.HIGH, category: "File Upload Security" },
+    { name: "No MIME Type Check on Upload", regex: /(?:originalFilename|originalname|filename|name)\s*(?:[:,]|\))/gi, severity: SEVERITY.MEDIUM, category: "File Upload Security" },
+    { name: "File Extension from User Input (Trust Issue)", regex: /(?:\.split\s*\(\s*['"]\.['"]|path\.extname|\.endsWith)\s*\([^)]*(?:originalFilename|originalname|filename|name)/gi, severity: SEVERITY.MEDIUM, category: "File Upload Security" },
+    { name: "File Stored Without Renaming", regex: /(?:writeFile|writeFileSync|pipe|mv|moveTo|saveAs|saveTo)\s*\(\s*(?:[^,]*(?:originalFilename|originalname|filename)[^,]*)/gi, severity: SEVERITY.MEDIUM, category: "File Upload Security" },
+    { name: "Base64 Encoding Without Validation", regex: /\.toString\s*\(\s*['"]base64['"]\s*\)/g, severity: SEVERITY.LOW, category: "File Upload Security" },
+    { name: "Multer Without File Filter", regex: /multer\s*\(\s*\{(?:(?!fileFilter)[\s\S])*\}\s*\)/g, severity: SEVERITY.HIGH, category: "File Upload Security" },
+    { name: "Multer Without Size Limit", regex: /multer\s*\(\s*\{(?:(?!limits)[\s\S])*\}\s*\)/g, severity: SEVERITY.MEDIUM, category: "File Upload Security" },
+    { name: "Formidable Without Max File Size", regex: /(?:formidable|IncomingForm|Formidable)\s*\(\s*\{?(?:(?!maxFileSize)[\s\S])*?\}?\s*\)/g, severity: SEVERITY.MEDIUM, category: "File Upload Security" },
+    { name: "File Served Without Content-Disposition", regex: /(?:sendFile|download|pipe)\s*\(\s*(?:req\.|request\.|body\.|query\.|params\.)/gi, severity: SEVERITY.MEDIUM, category: "File Upload Security" },
+    { name: "Upload to Public/Static Directory", regex: /(?:upload|save|write|move)\s*(?:Dir|Path|Folder|Destination|To)?\s*[:=]\s*['"`](?:[^'"]*(?:public|static|www|htdocs|assets))/gi, severity: SEVERITY.HIGH, category: "File Upload Security" },
+  ],
 };
 
 function getLineNumber(content, index) {
@@ -112,28 +156,125 @@ function getLineNumber(content, index) {
 
 function analyzeContent(content, fileName) {
   const findings = [];
+  const isJS = /\.(js|jsx|ts|tsx|mjs|cjs|vue|svelte)$/i.test(fileName);
+
+  // ─── Standard pattern matching ───
   for (const group of Object.values(PATTERNS)) {
     for (const p of group) {
       if (p.single && p.test) {
         if (p.test(content)) {
-          findings.push({ rule: p.name, severity: p.severity, category: p.category, file: fileName, line: "-", snippet: "(entire file checked)" });
+          findings.push({ rule: p.name, severity: p.severity, category: p.category, file: fileName, line: "-", snippet: "(entire file checked)", recommendation: RECOMMENDATIONS[p.name] || "" });
         }
       } else if (p.regex) {
         p.regex.lastIndex = 0;
         let m;
         const seen = new Set();
         while ((m = p.regex.exec(content)) !== null) {
+          if (p.contextCheck && !p.contextCheck(content, m.index)) continue;
           const snippet = m[0].length > 120 ? m[0].slice(0, 117) + "..." : m[0];
           const key = `${p.name}:${snippet}`;
           if (seen.has(key)) continue;
           seen.add(key);
-          findings.push({ rule: p.name, severity: p.severity, category: p.category, file: fileName, line: getLineNumber(content, m.index), snippet });
+          findings.push({ rule: p.name, severity: p.severity, category: p.category, file: fileName, line: getLineNumber(content, m.index), snippet, recommendation: RECOMMENDATIONS[p.name] || "" });
         }
       }
     }
   }
+
+  // ─── Smart Logic: Input Validation Depth Analysis ───
+  if (isJS) {
+    // Detect presence-only checks that lack type/format validation
+    const presenceCheckRe = /if\s*\(\s*((?:!\s*\w+\s*(?:\|\|\s*)?)+)\s*\)\s*\{[^}]*(?:return|throw|res\.status)[^}]*\}/g;
+    let pm;
+    while ((pm = presenceCheckRe.exec(content)) !== null) {
+      const fields = pm[1].match(/!\s*(\w+)/g)?.map(f => f.replace(/!\s*/, "")) || [];
+      const surroundingBlock = content.substring(pm.index, Math.min(content.length, pm.index + 2000));
+      for (const field of fields) {
+        const hasTypeCheck = new RegExp(`typeof\\s+${field}\\s*[!=]==?\\s*['"]`, "i").test(surroundingBlock);
+        const hasRegexValidation = new RegExp(`${field}\\s*\\.\\s*(?:match|test|replace|search)\\s*\\(`, "i").test(surroundingBlock);
+        const hasIncludesCheck = new RegExp(`${field}\\s*\\.\\s*includes\\s*\\(`, "i").test(surroundingBlock);
+        const hasLengthCheck = new RegExp(`${field}\\s*\\.\\s*length`, "i").test(surroundingBlock);
+        const hasValidatorLib = new RegExp(`(?:validator|joi|yup|zod|ajv|celebrate)\\s*\\.`, "i").test(surroundingBlock);
+        if (!hasTypeCheck && !hasRegexValidation && !hasIncludesCheck && !hasLengthCheck && !hasValidatorLib) {
+          const isEmailField = /email/i.test(field);
+          const isPhoneField = /phone|tel|mobile/i.test(field);
+          const isUrlField = /url|link|website|href/i.test(field);
+          let detail = `"${field}" checked for presence but not validated`;
+          let rec = `Add typeof check and format validation for "${field}"`;
+          if (isEmailField) { detail += " (email needs format validation)"; rec = `Validate email with regex or validator.isEmail(): typeof ${field} === "string" && ${field}.includes("@")`; }
+          if (isPhoneField) { detail += " (phone needs format validation)"; rec = `Validate phone format: /^\\+?\\d{10,15}$/.test(${field})`; }
+          if (isUrlField) { detail += " (URL needs format validation)"; rec = `Validate URL with: new URL(${field}) in try/catch or validator.isURL()`; }
+          findings.push({ rule: "Presence-Only Validation (No Sanitization)", severity: isEmailField || isPhoneField ? SEVERITY.HIGH : SEVERITY.MEDIUM, category: "Input Validation", file: fileName, line: getLineNumber(content, pm.index), snippet: detail, recommendation: rec });
+        }
+      }
+    }
+
+    // Detect file upload handlers missing safety checks
+    const fileHandlerRe = /(?:files?\s*[\[.]\s*\w+|req\.files?\s*[\[.]\s*\w+|upload(?:ed)?File\w*)\s*/gi;
+    let fm;
+    while ((fm = fileHandlerRe.exec(content)) !== null) {
+      const block = content.substring(fm.index, Math.min(content.length, fm.index + 3000));
+      const hasMimeCheck = /(?:mimetype|mime_type|type|content.?type)\s*(?:===|!==|==|!=|\.includes|\.match|allowedTypes|allowedMimes|ALLOWED)/i.test(block);
+      const hasSizeCheck = /(?:size|length|fileSize|maxSize|MAX_SIZE|limit|maxFileSize)\s*(?:[<>!=]|<=|>=)/i.test(block);
+      const hasExtCheck = /(?:extname|extension|\.endsWith|allowedExt|ALLOWED_EXT|fileFilter)/i.test(block);
+      const hasMagicBytes = /(?:magic|fileType|file-type|mmmagic|buffer\.slice|readUInt)/i.test(block);
+      if (!hasMimeCheck && !hasMagicBytes) {
+        findings.push({ rule: "File Upload: No MIME Type Validation", severity: SEVERITY.HIGH, category: "File Upload Security", file: fileName, line: getLineNumber(content, fm.index), snippet: "File processed without verifying MIME type — accepts any file type", recommendation: 'Add MIME validation: const allowed = ["application/pdf","image/png"]; if (!allowed.includes(file.mimetype)) return res.status(400).json({error:"Invalid file type"})' });
+      }
+      if (!hasSizeCheck) {
+        findings.push({ rule: "File Upload: No File Size Limit", severity: SEVERITY.MEDIUM, category: "File Upload Security", file: fileName, line: getLineNumber(content, fm.index), snippet: "File processed without checking size — risk of denial-of-service via large uploads", recommendation: "Add size check: if (file.size > 5 * 1024 * 1024) return res.status(413).json({error:'File too large'})" });
+      }
+      if (!hasExtCheck && !hasMimeCheck && !hasMagicBytes) {
+        findings.push({ rule: "File Upload: No Extension Validation", severity: SEVERITY.MEDIUM, category: "File Upload Security", file: fileName, line: getLineNumber(content, fm.index), snippet: "File saved/processed without verifying extension — double extension attacks possible", recommendation: 'Check extension: const ext = path.extname(file.originalFilename).toLowerCase(); if (![".pdf",".png"].includes(ext)) reject' });
+      }
+    }
+
+    // Detect CORS wildcard + credentials combo in broader scope
+    if (/Access-Control-Allow-Origin[^;]*\*/i.test(content) && /Access-Control-Allow-Credentials[^;]*true/i.test(content)) {
+      findings.push({ rule: "CORS: Wildcard Origin + Credentials (Browser Ignored but Dangerous Config)", severity: SEVERITY.CRITICAL, category: "CORS Misconfiguration", file: fileName, line: "-", snippet: "Allow-Origin: * combined with Allow-Credentials: true in same file", recommendation: "Browsers block this combo but it signals a misconfigured server. Replace * with a specific allowed origin whitelist." });
+    }
+
+    // Detect CORS header set without restricting methods
+    if (/Access-Control-Allow-Origin/i.test(content) && !/Access-Control-Allow-Methods/i.test(content)) {
+      findings.push({ rule: "CORS: Origin Set but Methods Not Restricted", severity: SEVERITY.MEDIUM, category: "CORS Misconfiguration", file: fileName, line: "-", snippet: "Access-Control-Allow-Origin set without explicit Access-Control-Allow-Methods", recommendation: 'Restrict allowed methods: res.setHeader("Access-Control-Allow-Methods", "GET, POST")' });
+    }
+  }
+
   return findings;
 }
+
+// ─── Remediation Recommendations ──────────────────────────────
+const RECOMMENDATIONS = {
+  "CORS Wildcard Origin (*)": 'Replace "*" with specific trusted origins: cors({ origin: ["https://yourdomain.com"] })',
+  "CORS Allow-Origin Header Set to *": 'Use a whitelist: const allowed = ["https://app.example.com"]; if (allowed.includes(req.headers.origin)) res.setHeader("Access-Control-Allow-Origin", req.headers.origin)',
+  "CORS Allow-All Methods": 'Restrict to only needed methods: "GET, POST" — remove DELETE, PUT, PATCH unless required',
+  "CORS Allow-All Headers": "Specify only needed headers instead of wildcard: Content-Type, Authorization",
+  "CORS Credentials with Wildcard": "CRITICAL: Never combine credentials: true with origin: *. Use an explicit origin whitelist.",
+  "CORS Origin Reflected (Dynamic Wildcard)": "Validate origin against a whitelist before reflecting: if (allowedOrigins.includes(origin)) set header",
+  "cors() Middleware Without Config": 'Configure cors explicitly: cors({ origin: "https://yourdomain.com", methods: ["GET","POST"] })',
+  "Django CORS Allow All": "Set CORS_ALLOWED_ORIGINS = ['https://yourdomain.com'] instead of CORS_ALLOW_ALL_ORIGINS = True",
+  "Presence-Only Check (No Type Validation)": "Add typeof checks and format validation (regex, .includes, or a library like Joi/Zod)",
+  "Missing Email Validation": 'Validate: typeof email === "string" && /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)',
+  "Direct Request Body Usage (No Sanitization)": "Validate and sanitize all req.body fields before use with typeof checks and format validation",
+  "SQL String Concatenation (Injection Risk)": "Use parameterized queries: db.query('SELECT * FROM users WHERE id = $1', [id])",
+  "SQL Template Literal (Injection Risk)": "Never interpolate user input into SQL. Use parameterized queries or an ORM.",
+  "Path Traversal Risk (User Input in File Path)": "Sanitize: path.resolve(baseDir, path.basename(userInput)) and verify it starts with baseDir",
+  "Command Injection Risk": "Never pass user input to exec/spawn. Use execFile with an args array instead.",
+  "Regex Injection (User Input in RegExp)": "Escape user input: str.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') or use a literal match",
+  "File Upload Without Type Validation": 'Validate MIME type: const allowed = ["application/pdf"]; if (!allowed.includes(file.mimetype)) reject',
+  "readFileSync on Uploaded File (No Size Check)": "Check file.size before reading and set a max limit to prevent memory exhaustion",
+  "Multer Without File Filter": "Add fileFilter: multer({ fileFilter: (req,file,cb) => { if (allowed.includes(file.mimetype)) cb(null,true); else cb(new Error('Invalid')); } })",
+  "Multer Without Size Limit": "Add limits: multer({ limits: { fileSize: 5 * 1024 * 1024 } })",
+  "Upload to Public/Static Directory": "Store uploads outside web root and serve via a controller that validates access",
+  "eval() Usage": "Replace eval() with JSON.parse(), Function constructor, or a safe expression parser",
+  "innerHTML Assignment": "Use textContent for text or a sanitization library like DOMPurify: el.innerHTML = DOMPurify.sanitize(input)",
+  "Missing CSP Meta Tag": 'Add: <meta http-equiv="Content-Security-Policy" content="default-src \'self\'; script-src \'self\'">',
+  "Missing Referrer Policy": 'Add: <meta name="referrer" content="strict-origin-when-cross-origin">',
+  "Missing X-Frame-Options (Clickjacking)": 'Add: <meta http-equiv="X-Frame-Options" content="DENY"> or use helmet.js',
+  "Form Without CSRF Token": "Add a hidden CSRF token field: <input type='hidden' name='_csrf' value='{{csrfToken}}'>",
+  "Password in Code": "Move passwords to environment variables: process.env.DB_PASSWORD",
+  "Generic API Key": "Store API keys in environment variables or a secret manager, never in source code",
+};
 
 // ─── UI Components ────────────────────────────────────────────
 const SeverityBadge = ({ severity }) => (
@@ -392,6 +533,14 @@ export default function CyberSecAnalyzer() {
                           <pre style={{ margin: 0, padding: "8px 12px", background: "rgba(255,255,255,0.03)", borderRadius: 4, fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: "#f97316", overflowX: "auto", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
                             {f.snippet}
                           </pre>
+                          {f.recommendation && (
+                            <div style={{ marginTop: 10 }}>
+                              <div style={{ fontSize: 10, color: "#6ee7b7", marginBottom: 4, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.05em" }}>⮕ FIX RECOMMENDATION:</div>
+                              <div style={{ padding: "8px 12px", background: "rgba(110,231,183,0.06)", border: "1px solid rgba(110,231,183,0.15)", borderRadius: 4, fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: "#a7f3d0", whiteSpace: "pre-wrap", wordBreak: "break-all", lineHeight: 1.6 }}>
+                                {f.recommendation}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -403,8 +552,8 @@ export default function CyberSecAnalyzer() {
             {/* Export */}
             <div style={{ marginTop: 20, display: "flex", gap: 10 }}>
               <button onClick={() => {
-                const csv = "Severity,Category,Rule,File,Line,Snippet\n" + findings.map(f =>
-                  `"${SEV_LABELS[f.severity]}","${f.category}","${f.rule}","${f.file}","${f.line}","${f.snippet.replace(/"/g, '""')}"`
+                const csv = "Severity,Category,Rule,File,Line,Snippet,Recommendation\n" + findings.map(f =>
+                  `"${SEV_LABELS[f.severity]}","${f.category}","${f.rule}","${f.file}","${f.line}","${f.snippet.replace(/"/g, '""')}","${(f.recommendation||'').replace(/"/g, '""')}"`
                 ).join("\n");
                 const blob = new Blob([csv], { type: "text/csv" });
                 const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "sentinel-report.csv"; a.click();
