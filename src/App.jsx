@@ -556,7 +556,7 @@ export default function CyberSecAnalyzer() {
                   `"${SEV_LABELS[f.severity]}","${f.category}","${f.rule}","${f.file}","${f.line}","${f.snippet.replace(/"/g, '""')}","${(f.recommendation||'').replace(/"/g, '""')}"`
                 ).join("\n");
                 const blob = new Blob([csv], { type: "text/csv" });
-                const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "sentinel-report.csv"; a.click();
+                const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "Public-Cyber-Defense-Network-Report.csv"; a.click();
               }} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#e2e2e8", padding: "8px 16px", borderRadius: 6, cursor: "pointer", fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>
                 ⬇ Export CSV
               </button>
@@ -570,7 +570,7 @@ export default function CyberSecAnalyzer() {
                   findings: findings.map(f => ({ ...f, severity: SEV_LABELS[f.severity] }))
                 };
                 const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
-                const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "sentinel-report.json"; a.click();
+                const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "Public-Cyber-Defense-Network-Report.json"; a.click();
               }} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#e2e2e8", padding: "8px 16px", borderRadius: 6, cursor: "pointer", fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>
                 ⬇ Export JSON
               </button>
