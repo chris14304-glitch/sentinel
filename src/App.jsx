@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 
 const SEVERITY = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1, INFO: 0 };
 const SEV_LABELS = ["INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"];
@@ -274,6 +274,97 @@ const RECOMMENDATIONS = {
   "Form Without CSRF Token": "Add a hidden CSRF token field: <input type='hidden' name='_csrf' value='{{csrfToken}}'>",
   "Password in Code": "Move passwords to environment variables: process.env.DB_PASSWORD",
   "Generic API Key": "Store API keys in environment variables or a secret manager, never in source code",
+  // Secrets & Keys
+  "AWS Access Key": "Remove AWS keys from source code. Use IAM roles, environment variables, or AWS Secrets Manager.",
+  "AWS Secret Key": "Never store AWS secret keys in code. Use environment variables or IAM instance roles.",
+  "Google API Key": "Restrict the API key in Google Cloud Console and move it to environment variables.",
+  "Stripe Key": "Store Stripe keys in environment variables. Never commit live keys — use test keys during development.",
+  "GitHub Token": "Revoke this token immediately and generate a new one. Store tokens in environment variables or a secret manager.",
+  "Slack Token": "Revoke and rotate the Slack token. Store it in environment variables, not source code.",
+  "JWT Token": "Do not hardcode JWT tokens. Generate them dynamically and store secrets in environment variables.",
+  "Private Key Block": "Remove private keys from source code immediately. Use a secrets manager or mount them from a secure volume.",
+  "Bearer Token": "Do not hardcode bearer tokens. Retrieve them dynamically via an auth flow.",
+  "Basic Auth Credentials": "Remove hardcoded Basic Auth credentials. Use environment variables or a vault.",
+  "Database Connection String": "Move connection strings to environment variables: process.env.DATABASE_URL",
+  // PII Exposure
+  "Email Address": "Avoid hardcoding email addresses. Use configuration or environment variables for contact addresses.",
+  "Phone Number (US)": "Remove hardcoded phone numbers. Store PII in a secure database, not in source code.",
+  "Phone Number (Intl)": "Remove hardcoded phone numbers. Store PII in a secure database, not in source code.",
+  "SSN Pattern": "CRITICAL: Remove SSNs from source code immediately. SSNs must never appear in code or logs.",
+  "Credit Card Pattern": "CRITICAL: Remove credit card numbers from source code. Use a PCI-compliant payment processor.",
+  "IP Address (Private)": "Avoid hardcoding internal IPs. Use service discovery, DNS, or environment variables.",
+  // URL & Endpoint Exposure
+  "Internal/Private URL": "Remove internal URLs from client-side code. Use environment-specific configuration.",
+  "Staging/Dev URL": "Remove staging/dev URLs from production code. Use environment variables for base URLs.",
+  "Private API Endpoint": "Do not expose internal API paths in client-side code. Use a reverse proxy or API gateway.",
+  "Hidden Admin Path": "Do not expose admin paths in client-side code. Protect admin routes with authentication and authorization.",
+  "Test Endpoint": "Remove test/debug endpoints before deploying to production.",
+  "GraphQL Endpoint": "Disable GraphQL introspection in production and enforce authentication on the endpoint.",
+  // XSS & Injection
+  "outerHTML Assignment": "Use textContent for text or sanitize with DOMPurify: el.outerHTML = DOMPurify.sanitize(input)",
+  "document.write()": "Avoid document.write(). Use DOM APIs like createElement/appendChild or textContent instead.",
+  "Inline Event Handler": "Remove inline event handlers. Use addEventListener() to bind events in JavaScript.",
+  "javascript: Protocol": "Never use javascript: URIs. Use proper event handlers instead.",
+  "data: URI in src/href": "Validate and sanitize data: URIs. Prefer serving assets from your own origin.",
+  "Function() Constructor": "Avoid new Function(). It executes arbitrary strings like eval(). Use safe alternatives.",
+  "setTimeout/setInterval with String": "Pass a function reference instead of a string: setTimeout(() => { ... }, delay)",
+  "DOM Insertion (insertAdjacentHTML)": "Sanitize input before using insertAdjacentHTML: el.insertAdjacentHTML('beforeend', DOMPurify.sanitize(input))",
+  "Unescaped Template Literal in DOM": "Never interpolate unsanitized variables into innerHTML template literals. Use DOMPurify.sanitize().",
+  "Potential XSS Payload": "Remove inline <script> blocks with untrusted content. Use Content-Security-Policy to block inline scripts.",
+  "SVG onload XSS": "Remove onload handlers from SVG elements. Sanitize SVGs with DOMPurify before rendering.",
+  "img onerror XSS": "Remove onerror handlers from img elements. Validate image sources and use CSP to restrict inline handlers.",
+  // Form Security
+  "Password Field on Page": "Ensure password fields use autocomplete=\"new-password\" or autocomplete=\"current-password\" and are served over HTTPS.",
+  "Form with HTTP Action": "Change form actions to HTTPS to prevent credentials from being sent in cleartext.",
+  "Form Missing Action": "Add an explicit action attribute to forms. Omitting it posts to the current URL which may be unintended.",
+  "Autocomplete Not Disabled (Sensitive)": "Add autocomplete=\"off\" to sensitive input fields to prevent browser credential caching.",
+  // CSRF
+  "Form Without CSRF Token": "Add a hidden CSRF token field: <input type='hidden' name='_csrf' value='{{csrfToken}}'>",
+  // Mixed Content
+  "HTTP Script on HTTPS Page": "Change script src to HTTPS to prevent man-in-the-middle code injection.",
+  "HTTP Stylesheet": "Change stylesheet href to HTTPS to prevent style injection attacks.",
+  "HTTP Image": "Change image src to HTTPS to prevent mixed content warnings and potential content spoofing.",
+  "HTTP iframe": "Change iframe src to HTTPS. HTTP iframes on HTTPS pages can be intercepted and modified.",
+  // Third-Party & Supply Chain
+  "External Script": "Verify the external script source is trusted. Add Subresource Integrity (SRI) hashes.",
+  "Tracking Pixel": "Document tracking pixels in your privacy policy. Consider if they are necessary.",
+  "Google Analytics": "Ensure Google Analytics is documented in your privacy policy and complies with GDPR/CCPA.",
+  "Facebook Pixel": "Ensure Facebook Pixel is documented in your privacy policy and complies with data regulations.",
+  "Integrity Missing on External Script": 'Add SRI: <script src="..." integrity="sha384-..." crossorigin="anonymous">',
+  // Debug & Dev Artifacts
+  "Console.log Statement": "Remove console.log statements before production. Use a proper logging library with log levels.",
+  "debugger Statement": "Remove debugger statements before production — they will pause execution in browsers with DevTools open.",
+  "TODO/FIXME/HACK Comment": "Address TODO/FIXME/HACK comments before shipping. They indicate incomplete or fragile code.",
+  "Commented Credentials": "Remove commented-out credentials entirely — they are still visible in source code and version history.",
+  "Source Map Reference": "Remove source map references in production builds to prevent exposing original source code.",
+  "Stack Trace Exposure": "Do not expose stack traces to users. Log them server-side and return generic error messages.",
+  "Version/Build Info Exposed": "Remove version/build info from client-facing code. Attackers use it to find known vulnerabilities.",
+  // Information Leakage
+  "HTML Comment with Internal Info": "Remove HTML comments containing internal details before deploying — they are visible to anyone via View Source.",
+  "JS Comment with Sensitive Info": "Remove comments referencing internal systems, credentials, or infrastructure details.",
+  "Block Comment with Sensitive Info": "Remove block comments containing sensitive information — they ship to the client in unminified builds.",
+  // Outdated Libraries
+  "jQuery (Check Version)": "Check your jQuery version against known CVEs at snyk.io/vuln. Update to the latest version.",
+  "Bootstrap (Check Version)": "Check your Bootstrap version for known vulnerabilities. Update to the latest version.",
+  "Angular.js (1.x - EOL)": "AngularJS 1.x is end-of-life and no longer receives security patches. Migrate to a supported framework.",
+  "Moment.js (Deprecated)": "Moment.js is deprecated. Migrate to date-fns, Luxon, or the native Intl/Temporal APIs.",
+  // CORS (ones not already covered)
+  "CORS Preflight Allow-All": "Restrict preflight responses to specific origins and methods instead of wildcards.",
+  "Express CORS Wildcard Config": 'Set a specific origin: cors({ origin: "https://yourdomain.com" }) instead of origin: true',
+  "Flask CORS Wildcard": 'Specify allowed origins: CORS(app, origins=["https://yourdomain.com"])',
+  // Input Validation (ones not already covered)
+  "JSON.parse Without Try-Catch": "Wrap JSON.parse in try-catch when parsing user input: try { JSON.parse(data) } catch(e) { return res.status(400).json({error:'Invalid JSON'}) }",
+  "Prototype Pollution Risk (Object.assign from user)": "Do not merge user input directly. Validate and pick allowed fields: const { name, email } = req.body",
+  "Spread Operator from User Input": "Do not spread user input into objects. Destructure only expected fields to prevent prototype pollution.",
+  "Missing Length/Size Validation": "Add length/size checks on string inputs to prevent abuse: if (input.length > MAX_LENGTH) reject",
+  "No parseInt/Number Validation on Numeric Input": "Parse and validate numeric inputs: const id = parseInt(req.params.id, 10); if (isNaN(id)) return res.status(400)...",
+  // File Upload (ones not already covered)
+  "No MIME Type Check on Upload": 'Validate MIME type: const allowed = ["image/png","application/pdf"]; if (!allowed.includes(file.mimetype)) reject',
+  "File Extension from User Input (Trust Issue)": "Do not trust file extensions alone. Validate MIME type and use magic bytes for critical uploads.",
+  "File Stored Without Renaming": "Rename uploaded files with a UUID or hash: const safeName = crypto.randomUUID() + path.extname(file.name)",
+  "Base64 Encoding Without Validation": "Validate file content before base64 encoding. Ensure the source data is expected and size-limited.",
+  "Formidable Without Max File Size": "Set maxFileSize: new IncomingForm({ maxFileSize: 5 * 1024 * 1024 })",
+  "File Served Without Content-Disposition": 'Set Content-Disposition header: res.setHeader("Content-Disposition", "attachment; filename=safe.pdf")',
 };
 
 // ─── UI Components ────────────────────────────────────────────
@@ -325,7 +416,7 @@ export default function CyberSecAnalyzer() {
   const [dragOver, setDragOver] = useState(false);
 
   const handleFiles = useCallback((fileList) => {
-    const valid = Array.from(fileList).filter(f => /\.(html?|js|jsx|ts|tsx|vue|svelte|php|css)$/i.test(f.name));
+    const valid = Array.from(fileList).filter(f => /\.(html?|js|jsx|ts|tsx|vue|svelte|php|css|py|go|java|rb)$/i.test(f.name));
     if (valid.length === 0) return;
     setFiles(prev => [...prev, ...valid]);
     setAnalyzed(false);
@@ -371,7 +462,7 @@ export default function CyberSecAnalyzer() {
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ width: 36, height: 36, borderRadius: 8, background: "linear-gradient(135deg, #ef4444, #f97316)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🛡</div>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.02em" }}>Public Cyber Defense Network</div>
+            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.02em" }}>SENTINEL</div>
             <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.1em" }}>STATIC SECURITY ANALYZER</div>
           </div>
         </div>
@@ -400,12 +491,12 @@ export default function CyberSecAnalyzer() {
               cursor: "pointer",
               marginBottom: 24,
             }}
-            onClick={() => { const i = document.createElement("input"); i.type = "file"; i.multiple = true; i.accept = ".html,.htm,.js,.jsx,.ts,.tsx,.vue,.svelte,.php,.css"; i.onchange = e => handleFiles(e.target.files); i.click(); }}
+            onClick={() => { const i = document.createElement("input"); i.type = "file"; i.multiple = true; i.accept = ".html,.htm,.js,.jsx,.ts,.tsx,.vue,.svelte,.php,.css,.py,.go,.java,.rb"; i.onchange = e => handleFiles(e.target.files); i.click(); }}
           >
             <div style={{ fontSize: 40, marginBottom: 12 }}>⬆</div>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Drop files here or click to browse</div>
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", fontFamily: "'JetBrains Mono', monospace" }}>
-              .html .js .jsx .ts .tsx .vue .svelte .php .css
+              .html .js .jsx .ts .tsx .vue .svelte .php .css .py .go .java .rb
             </div>
           </div>
         )}
@@ -556,7 +647,7 @@ export default function CyberSecAnalyzer() {
                   `"${SEV_LABELS[f.severity]}","${f.category}","${f.rule}","${f.file}","${f.line}","${f.snippet.replace(/"/g, '""')}","${(f.recommendation||'').replace(/"/g, '""')}"`
                 ).join("\n");
                 const blob = new Blob([csv], { type: "text/csv" });
-                const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "Public-Cyber-Defense-Network-Report.csv"; a.click();
+                const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = "sentinel-report.csv"; a.click(); URL.revokeObjectURL(url);
               }} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#e2e2e8", padding: "8px 16px", borderRadius: 6, cursor: "pointer", fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>
                 ⬇ Export CSV
               </button>
@@ -570,7 +661,7 @@ export default function CyberSecAnalyzer() {
                   findings: findings.map(f => ({ ...f, severity: SEV_LABELS[f.severity] }))
                 };
                 const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
-                const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "Public-Cyber-Defense-Network-Report.json"; a.click();
+                const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = "sentinel-report.json"; a.click(); URL.revokeObjectURL(url);
               }} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#e2e2e8", padding: "8px 16px", borderRadius: 6, cursor: "pointer", fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>
                 ⬇ Export JSON
               </button>
